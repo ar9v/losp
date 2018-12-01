@@ -20,15 +20,6 @@
   (consume in)
   (write "ACK" out)
   (flush-output out)
-  (consume in)
-  (write "ACK" out)
-  (flush-output out)
-  (consume in)
-  (write "ACK" out)
-  (flush-output out)
-  (consume in)
-  (write "ACK" out)
-  (flush-output out)
   (handle in out)
   (displayln "Closing Connection...")
   (close-output-port out)
@@ -57,10 +48,13 @@
 
 (define (name->function name)
   (case name
-    [("CreateP") createP]
+    [("CreateP") create]
     [("Address") address]
     [("Fin")  fin]
     [("End") end]
+    [("RealMemory") real-mem]
+    [("SwapMemory") swap-mem]
+    [("PageSize") page-size]
     [else no-command]))
 
 (define (process msg)
@@ -68,7 +62,7 @@
   (define f (name->function (car string-list)))
   (apply f (cdr string-list)))
 
-(define (createP s n)
+(define (create s n)
   (format "s:~a n:~a" s n))
 
 (define (address pid v)
@@ -79,6 +73,16 @@
 
 (define (end)
   (format "The End."))
+
+(define (real-mem m)
+  (format "real memory:~a" m))
+
+(define (swap-mem m)
+  (format "swap memory:~a" m))
+
+(define (page-size p)
+  (format "page size:~a" p))
+
 (define (no-command . sink)
   (displayln "This Command name does not exist"))
 
@@ -87,7 +91,7 @@
   (define string-list (string-split msg))
   (strip-comments string-list))
 
-;; Function to remove comments from the tokenized message
+;; Function to remove strip-comments from the tokenized message
 (define (strip-comments string-list)
   (take-until (lambda (x) (string-contains? x "/")) string-list))
 

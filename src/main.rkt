@@ -1,6 +1,8 @@
 #lang racket
 (require racket/tcp)
 
+(require "command.rkt")
+
 ;; Server code (defines listener and returns a function to stop the server)
 (define (serve port-no)
   (define listener (tcp-listen port-no))
@@ -43,7 +45,8 @@
                              ("cpu" . empty)
                              ("memory" . empty)
                              ("swap" . empty)
-                             ("finished-queue" . empty))))
+                             ("finished-queue" . empty)
+                             ("current-pid" . 0))))
   (define params (make-hash `(("start" . ,(current-inexact-milliseconds)))))
 
   ;; Consume the first messages of the protocol
@@ -61,7 +64,7 @@
     (when (not (empty? msg))
       (printf "Server recibió: ~a~n" msg)
       (displayln msg out)
-      (process msg params state)
+      (command msg params state)
       (displayln state)
 ;;    (displayln (process msg) out)
       (flush-output out)
@@ -69,69 +72,6 @@
       (loop)))
   (loop))
 
-(define (name->function name)
-  (case name
-    [("CreateP") create]
-    [("Address") address]
-    [("Fin")  fin]
-    [("End") end]
-    [("RealMemory") real-mem]
-    [("SwapMemory") swap-mem]
-    [("PageSize") page-size]
-    [else no-command]))
 
-(define (process msg params state)
-  (define string-list (tokenizer msg))
-  (hash-set! state "command" (car string-list))
-  (set-timestamp state params)
-  (define f (name->function (car string-list)))
-  (apply f params state (cdr string-list)))
 
-(define (set-timestamp state params)
-  (hash-set! state "timestamp" (real->decimal-string (ms->s (- (current-inexact-milliseconds)
-                                                               (hash-ref params "start"))) 3)))
-
-(define (ms->s sec)
-  (/ sec 1000))
-                                                
-(define (create params state s n)
-  (format "s:~a n:~a" s n))
-
-(define (address params state pid v)
-  (format "pid:~a v:~a" pid v))
-
-(define (fin params state pid)
-  (format "pid:~a" pid))
-
-(define (end params state)
-  (format "The End."))
-
-(define (real-mem params state m)
-  (hash-set! params "memory" m)
-  (format "real memory:~a" m))
-
-(define (swap-mem params state m)
-  (hash-set! params "swap" m)
-  (format "swap memory:~a" m))
-
-(define (page-size params state p)
-  (hash-set! params "page" p)
-  (format "page size:~a" p))
-
-(define (no-command params state . sink)
-  (displayln "This Command name does not exist"))
-
-;; Changes the message sent by the client into a list of strings
-(define (tokenizer msg)
-  (define string-list (string-split msg))
-  (strip-comments string-list))
-
-;; Function to remove strip-comments from the tokenized message
-(define (strip-comments string-list)
-  (take-until (lambda (x) (string-contains? x "/")) string-list))
-
-;; Function to take elements from a list until predicate is true
-(define (take-until predicate list)
-  (cond [(empty? list) empty]
-        [(predicate (car list)) empty]
-        [else (cons (car list) (take-until predicate (cdr list)))]))
+(define stop (serve 10000))

@@ -4,7 +4,6 @@
 
 (require "list.rkt")
 
-
 (define (command msg params state)
   (define string-list (tokenizer msg))
   (hash-set! state "command" (car string-list))
@@ -24,8 +23,16 @@
     [else no-command]))
 
 (define (set-timestamp state params)
-  (hash-set! state "timestamp" (real->decimal-string (ms->s (- (current-inexact-milliseconds)
-                                                               (hash-ref params "start"))) 3)))
+  (define start (hash-ref params "start"))
+  (hash-set! state "timestamp" (time-diff (time-now) start)))
+
+(define (time-now)
+  (current-inexact-milliseconds))
+
+(define (time-diff t1 t2)
+  (real->decimal-string (ms->s (- t1 t2))) 3)
+
+   
 (define (ms->s sec)
   (/ sec 1000))
 
@@ -40,7 +47,6 @@
   (define new-process (make-process))
   (print new-process)
   ;; two cases, the process in the cpu has lower priority or not
-  
   (format "s:~a n:~a" s n))
 
 (define (address params state pid v)

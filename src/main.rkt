@@ -16,12 +16,6 @@
 ;; Calls the message handler
 (define (accept-handle listener)
   (define-values (in out) (tcp-accept listener))
-  (consume in)
-  (write "ACK" out)
-  (flush-output out)
-  (consume in)
-  (write "ACK" out)
-  (flush-output out)
   (handle in out)
   (displayln "Closing Connection...")
   (close-output-port out)
@@ -40,12 +34,36 @@
 ;; Receives input and output ports and reads them into a buffer.
 ;; Processes the client's commands and sends answer from server to client
 (define (handle in out)
+  ;; Define state (all of the information to report: queues, memory, addresses, etc.)
+  ;; Also define the parameters (memory, swap and page size)
+  (define state (make-hash '(("command" . empty)
+                             ("timestamp" . empty)
+                             ("address" . empty)
+                             ("ready-queue" . empty)
+                             ("cpu" . empty)
+                             ("memory" . empty)
+                             ("swap" . empty)
+                             ("finished-queue" . empty))))
+  (define params (make-hash))
+
+  ;; Consume the first messages of the protocol
+  (consume in)
+  (write "ACK" out)
+  (flush-output out)
+  (consume in)
+  (write "ACK" out)
+  (flush-output out)
+
+  ;; Listen and handle the rest of the messages in the connection
   (displayln "handling connection")
   (define (loop)
     (define msg (consume in))
     (when (not (empty? msg))
       (printf "Server recibió: ~a~n" msg)
-      (displayln (process msg) out)
+      (displayln msg out)
+      (process msg params state)
+      (displayln state)
+;;    (displayln (process msg) out)
       (flush-output out)
       (flush-output)
       (loop)))
@@ -62,33 +80,38 @@
     [("PageSize") page-size]
     [else no-command]))
 
-(define (process msg)
+(define (process msg params state)
   (define string-list (tokenizer msg))
   (define f (name->function (car string-list)))
-  (apply f (cdr string-list)))
+  (apply f params state (cdr string-list)))
 
-(define (create s n)
+(define (create params state s n)
+  (hash-set! state "command" "Create")
   (format "s:~a n:~a" s n))
 
-(define (address pid v)
+(define (address params state pid v)
+  (hash-set! state "command" "Address")
   (format "pid:~a v:~a" pid v))
 
-(define (fin pid)
+(define (fin params state pid)
   (format "pid:~a" pid))
 
-(define (end)
+(define (end params state)
   (format "The End."))
 
-(define (real-mem m)
+(define (real-mem params state m)
+  (hash-set! params "memory" m)
   (format "real memory:~a" m))
 
-(define (swap-mem m)
+(define (swap-mem params state m)
+  (hash-set! params "swap" m)
   (format "swap memory:~a" m))
 
-(define (page-size p)
+(define (page-size params state p)
+  (hash-set! params "page" p)
   (format "page size:~a" p))
 
-(define (no-command . sink)
+(define (no-command params state . sink)
   (displayln "This Command name does not exist"))
 
 ;; Changes the message sent by the client into a list of strings

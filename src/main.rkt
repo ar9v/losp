@@ -42,13 +42,13 @@
                              ("timestamp" . empty)
                              ("address" . empty)
                              ("ready-queue" . empty)
-                             ("cpu" . empty)
+                             ("cpu" . ,empty)
                              ("memory" . empty)
                              ("swap" . empty)
                              ("finished-queue" . empty)
                              ("current-pid" . 0))))
   (define params (make-hash `(("start" . ,(current-inexact-milliseconds)))))
-
+  
   ;; Consume the first messages of the protocol
   (consume in)
   (write "ACK" out)

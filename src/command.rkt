@@ -32,7 +32,6 @@
 (define (time-diff t1 t2)
   (real->decimal-string (ms->s (- t1 t2))) 3)
 
-   
 (define (ms->s sec)
   (/ sec 1000))
 
@@ -44,9 +43,31 @@
   (hash-update! state "current-pid" inc)
   (define (make-process)
     (list new-pid s n))
+  (define (pid process)
+    (car process))
+  (define (size process)
+    (cadr process))
+  (define (priority process)
+    (caddr process))
   (define new-process (make-process))
-  (print new-process)
-  ;; two cases, the process in the cpu has lower priority or not
+  (define (add-to-ready proc)
+    (hash-update! state "ready-queue" (lambda (old) (append old proc))))
+  (define (add-to-cpu proc)
+    (hash-set! state "cpu" proc))
+  
+  ;; three cases,
+  ;; there is no process in cpu
+  ;; the process in the cpu has greater priority
+  ;; the process in the cpu has lower or equal priority
+  (define proc-in-cpu (hash-ref state "cpu"))
+  (displayln (empty? proc-in-cpu))
+  (displayln proc-in-cpu)
+  (cond
+    [(empty? proc-in-cpu) (add-to-cpu new-process)]
+    [(> (priority proc-in-cpu) (priority new-process))
+     (add-to-ready proc-in-cpu)
+     (add-to-cpu new-process)]
+    [else (add-to-ready new-process)])
   (format "s:~a n:~a" s n))
 
 (define (address params state pid v)

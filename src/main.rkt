@@ -44,7 +44,7 @@
                              ("memory" . empty)
                              ("swap" . empty)
                              ("finished-queue" . empty))))
-  (define params (make-hash))
+  (define params (make-hash `(("start" . ,(current-inexact-milliseconds)))))
 
   ;; Consume the first messages of the protocol
   (consume in)
@@ -82,15 +82,22 @@
 
 (define (process msg params state)
   (define string-list (tokenizer msg))
+  (hash-set! state "command" (car string-list))
+  (set-timestamp state params)
   (define f (name->function (car string-list)))
   (apply f params state (cdr string-list)))
 
+(define (set-timestamp state params)
+  (hash-set! state "timestamp" (real->decimal-string (ms->s (- (current-inexact-milliseconds)
+                                                               (hash-ref params "start"))) 3)))
+
+(define (ms->s sec)
+  (/ sec 1000))
+                                                
 (define (create params state s n)
-  (hash-set! state "command" "Create")
   (format "s:~a n:~a" s n))
 
 (define (address params state pid v)
-  (hash-set! state "command" "Address")
   (format "pid:~a v:~a" pid v))
 
 (define (fin params state pid)

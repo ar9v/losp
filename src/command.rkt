@@ -28,6 +28,9 @@
   (define (get-ready)
     (hash-ref state "ready-queue"))
 
+  (define (get-memory)
+    (hash-ref state "memory"))
+
   ;; a process accesors
   ;;(define (pid process)
   ;;  (car process))
@@ -88,9 +91,7 @@
   (define (alloc-mem pid v)
     (format "ALLOCATING MEM~n")
     (define virt (string->number v))
-    (define psize (* (hash-ref params "page") 1024))
-    (define msize (* (hash-ref params "memory") 1024))
-    (define num-pages (/ msize psize))
+    (define psize (hash-ref params "page-size"))
     (define (calculate-address-pair)
       (cons (truncate (/ virt psize)) (modulo virt psize)))
     (define address-pair (calculate-address-pair))
@@ -103,11 +104,11 @@
             [else (add1 page-counter) (get-page pid-page (cdr ls))]))
     
     ;; Check if page is in memory and if there's space to load
-    (cond [(member pid-page (hash-ref state "memory"))
-           (define frame (get-page pid-page (hash-ref state "memory")))
+    (cond [(member pid-page (get-memory))
+           (define frame (get-page pid-page (get-memory)))
            (displayln "FRAME A")]
-          [(member empty (hash-ref state "memory"))
-           (define frame (get-page empty (hash-ref state "memory")))
+          [(member empty (get-memory))
+           (define frame (get-page empty (get-memory)))
            (displayln "FRAME B")]
           [else
            (lru pid-page)]))
@@ -133,16 +134,23 @@
     (format "The End."))
 
   (define (real-mem m)
-    (hash-set! params "memory" (string->number m))
+    (hash-set! params "memory" (* 1024 (string->number m)))
     (format "real memory:~a" m))
 
   (define (swap-mem m)
-    (hash-set! params "swap" (string->number m))
+    (hash-set! params "swap" (* 1024 (string->number m)))
     (format "swap memory:~a" m))
 
   (define (page-size p)
-    (hash-set! params "page" (string->number p))
-    (format "page size:~a" p))
+    (define psize (* 1024 (string->number p)))
+    (hash-set! params "page" psize)
+    (let* ([ ssize (hash-ref params "swap")]
+           [ rsize (hash-ref params "memory")]
+           [ num-pages-swap (quotient ssize psize)]
+           [ num-pages-real (quotient rsize psize)])
+      (hash-set! state "memory" (make-vector num-pages-real))
+      (hash-set! state "swap" (make-vector num-pages-swap)))
+  (format "page size:~a" psize))
 
   (define (no-command . sink)
     (displayln "This Command name does not exist"))

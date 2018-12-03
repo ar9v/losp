@@ -31,6 +31,9 @@
   (define (get-memory)
     (hash-ref state "memory"))
 
+  (define (get-arrivs)
+    (hash-ref state "arrivals"))
+
   ;; a process accesors
   ;;(define (pid process)
   ;;  (car process))
@@ -75,10 +78,10 @@
     ;; the process in the cpu has greater priority
     ;; the process in the cpu has lower or equal priority
     (cond
-      [(empty? proc-in-cpu) (add-to-cpu new-process)]
+      [(empty? proc-in-cpu) (add-to-cpu new-process) (address (number->string (car new-process)) "0")]
       [(< (priority proc-in-cpu) (priority new-process))
        (add-to-ready proc-in-cpu)
-       (add-to-cpu new-process)]
+       (add-to-cpu new-process) (address (number->string (car new-process)) "0")]
       [else (add-to-ready new-process)])
     (format "s:~a n:~a" s n))
 
@@ -92,27 +95,33 @@
     (define virt (string->number v))
     (define psize (hash-ref params "page"))
     (define (calculate-address-pair)
-      (cons (truncate (/ virt psize)) (modulo virt psize)))
+      (cons (quotient virt psize) (modulo virt psize)))
 
-    (displayln "antes del let")
     (let* ([address-pair (calculate-address-pair)]
            [pid-page (cons pid (car address-pair))]
            [memory (get-memory)]
+           [arrivs (get-arrivs)]
            [pos-pid-page (vector-member pid-page memory)]
            [pos-empty-page (vector-member 0 memory)])
-      (displayln "Ricardo dijo que imprimiera")
-      (displayln pos-empty-page)
-      (displayln pos-pid-page)
       (cond [pos-pid-page
-             (hash-set! state "address" (+ (* pos-pid-page psize) (cdr address-pair)))]
-            [pos-empty-page
              (hash-set! state "address" (+ (* pos-pid-page psize) (cdr address-pair)))
-             (vector-set! memory pos-empty-page pid-page)]
+             (vector-set! arrivs pos-pid-page (string->number (hash-ref state "timestamp")))]
+            [pos-empty-page
+             (hash-set! state "address" (+ (* pos-empty-page psize) (cdr address-pair)))
+             (vector-set! memory pos-empty-page pid-page)
+             (vector-set! arrivs pos-empty-page (string->number (hash-ref state "timestamp")))]
             [else
              (lru pid-page)])))
 
-    (define (lru pid-page)
-      (displayln "lru aplicado"))
+  (define (lru pid-page)
+    (define oldest (apply min (vector->list (get-arrivs))))
+    (define old-pos (vector-member oldest (get-arrivs)))
+    (define old-pair (vector-ref (get-memory) old-pos))
+    (define pos-swap (vector-member 0 (hash-ref state "swap")))
+    (vector-set! (hash-ref state "swap") pos-swap old-pair)
+    (vector-set! (get-memory) old-pos pid-page)
+    (vector-set! (get-arrivs) old-pos (string->number (hash-ref state "timestamp")))
+    (displayln "lru aplicado"))
 
   (define (fin procid)
     (define nprocid (string->number procid))
@@ -122,6 +131,7 @@
     ;; the process to end is in the cpu,
     ;; the process to end is in the ready queue
     (cond
+      [(empty? proc-in-cpu) (add-to-finished (remove-from-ready nprocid))]
       [(= (car proc-in-cpu) nprocid)
         (add-to-finished proc-in-cpu)
         (add-to-cpu (next-proc))]
@@ -147,7 +157,8 @@
            [ num-pages-swap (quotient ssize psize)]
            [ num-pages-real (quotient rsize psize)])
       (hash-set! state "memory" (make-vector num-pages-real))
-      (hash-set! state "swap" (make-vector num-pages-swap)))
+      (hash-set! state "swap" (make-vector num-pages-swap))
+      (hash-set! state "arrivals" (make-vector num-pages-real)))
   (format "page size:~a" psize))
 
   (define (no-command . sink)

@@ -47,7 +47,7 @@
                              ("memory" . ,empty)
                              ("swap" . ,empty)
                              ("finished-queue" . ,empty)
-                             ("current-pid" . 0))))
+                             ("current-pid" . 1))))
   (define params (make-hash `(("start" . ,(current-inexact-milliseconds)))))
   
   ;; Consume the first messages of the protocol
@@ -68,8 +68,9 @@
               (begin
                 (printf "Server recibió: ~a~n" msg)
                 (displayln msg out)
-                (displayln state)
                 (displayln (command msg params state) out)
+                ;;                (displayln state)
+                (pretty-print state)
                 (flush-output out)
                 (flush-output)
                 (loop (cons (hash-copy state) log)))

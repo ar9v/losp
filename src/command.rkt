@@ -15,30 +15,47 @@
   (set-timestamp)
 
   (define (add-to-ready proc)
-    (hash-update! state "ready-queue" (lambda (old) (append old proc))))
+    (hash-update! state "ready-queue" (lambda (old) (cons proc old))))
+  
   (define (add-to-cpu proc)
     (hash-set! state "cpu" proc))
   
+  (define (add-to-finished proc)
+    (hash-update! state "finished-queue" (lambda (old) (cons proc old))))
+ 
+  (define (get-cpu)
+    (hash-ref state "cpu"))
+
+  ;; process list accesors
+  (define (pid process)
+    (car process))
+  (define (size process)
+    (cadr process))
+  (define (priority process)
+    (caddr process))
+
+  (define (process<=? x y)
+    (< (priority x) (priority y)))
+
+  (define (remove-from-ready proc)
+    (hash-set! state "ready-queue" proc))
+
+  (define (next-proc)
+    ;; head for now, it needs to be the highest priority
+    (car (hash-ref state "ready-queue")))
+
   (define (create s n)
     (define new-pid (hash-ref state "current-pid"))
     (hash-update! state "current-pid" inc)
     (define (make-process)
       (list new-pid s n))
-    (define (pid process)
-      (car process))
-    (define (size process)
-      (cadr process))
-    (define (priority process)
-      (caddr process))
     (define new-process (make-process))
+    (define proc-in-cpu (get-cpu))
     
     ;; three cases,
     ;; there is no process in cpu
     ;; the process in the cpu has greater priority
     ;; the process in the cpu has lower or equal priority
-    (define proc-in-cpu (hash-ref state "cpu"))
-    (displayln (empty? proc-in-cpu))
-    (displayln proc-in-cpu)
     (cond
       [(empty? proc-in-cpu) (add-to-cpu new-process)]
       [(< (string->number (priority proc-in-cpu)) (string->number (priority new-process)))
@@ -50,8 +67,11 @@
   (define (address pid v)
     (format "pid:~a v:~a" pid v))
 
-  (define (fin pid)
-    (format "pid:~a" pid))
+  (define (fin procid)
+    ;; two cases
+    ;; the process to end is in the cpu,
+    ;; the process to end is in the ready queue
+    (format "pid:~a" procid))
 
   (define (end)
     (format "The End."))
@@ -83,7 +103,7 @@
       [else no-command]))
 
   (define f (name->function (car string-list)))
-  (apply f params state (cdr string-list)))
+  (apply f (cdr string-list)))
 
 
 ;; Changes the message sent by the client into a list of strings

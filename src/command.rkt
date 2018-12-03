@@ -80,7 +80,8 @@
     (format "s:~a n:~a" s n))
 
   (define (address pid v)
-    (cond [(not (= (string->number pid) (car (hash-ref state "cpu"))))
+    (define proc-in-cpu (get-cpu))
+    (cond [(or (empty? proc-in-cpu) (not (= (string->number pid) (car proc-in-cpu))))
            (format "<~a> ~a no se está ejecutando" (hash-ref state "timestamp") pid)]
           [else (alloc-mem pid v)]))
 
@@ -100,7 +101,7 @@
       (cond [(eq? pid-page (car ls))
              page-counter]
             [else (add1 page-counter) (get-page pid-page (cdr ls))]))
-             
+    
     ;; Check if page is in memory and if there's space to load
     (cond [(member pid-page (hash-ref state "memory"))
            (define frame (get-page pid-page (hash-ref state "memory")))
@@ -156,7 +157,7 @@
       [("SwapMemory") swap-mem]
       [("PageSize") page-size]
       [else no-command]))
-
+  
   (define f (name->function (car string-list)))
   (apply f (cdr string-list)))
 
@@ -174,7 +175,7 @@
   (current-inexact-milliseconds))
 
 (define (time-diff t1 t2)
-  (real->decimal-string (ms->s (- t1 t2)) 3)
+  (real->decimal-string (ms->s (- t1 t2)) 3))
 
 (define (ms->s sec)
   (/ sec 1000))

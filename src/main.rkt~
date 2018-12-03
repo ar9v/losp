@@ -62,21 +62,16 @@
   (displayln "handling connection")
   (define (loop log)
     (define msg (consume in))
-    (cons (hash-copy state)
-
-          (if (not (empty? msg))
-              (begin
-                (printf "Server recibió: ~a~n" msg)
-                (displayln msg out)
-                (command msg params state)
-                (displayln state)
-                ;;    (displayln (process msg) out)
-                (flush-output out)
-                (flush-output)
-                (loop (cons (hash-copy state) log)))
-              empty)))
-  (define complete-log (loop empty))
-  (pretty-print complete-log))
+    (when (not (empty? msg))
+      (printf "Server recibió: ~a~n" msg)
+      (displayln msg out)
+      (command msg params state)
+      (pretty-print state)
+;;    (displayln (process msg) out)
+      (flush-output out)
+      (flush-output)
+      (loop (cons (hash-copy state) log))
+  (loop empty))
 
 
 

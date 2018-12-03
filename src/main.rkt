@@ -1,5 +1,6 @@
 #lang racket
 (require racket/tcp)
+(require racket/pretty)
 
 (require "command.rkt")
 
@@ -59,18 +60,22 @@
 
   ;; Listen and handle the rest of the messages in the connection
   (displayln "handling connection")
-  (define (loop)
+  (define (loop log)
     (define msg (consume in))
-    (when (not (empty? msg))
-      (printf "Server recibió: ~a~n" msg)
-      (displayln msg out)
-      (command msg params state)
-      (displayln state)
-;;    (displayln (process msg) out)
-      (flush-output out)
-      (flush-output)
-      (loop)))
-  (loop))
+    (cons (hash-copy state)
+          (if (not (empty? msg))
+              (begin
+                (printf "Server recibió: ~a~n" msg)
+                (displayln msg out)
+                (command msg params state)
+                (displayln state)
+                ;;    (displayln (process msg) out)
+                (flush-output out)
+                (flush-output)
+                (loop (cons (hash-copy state) log)))
+              empty)))
+  (define complete-log (loop empty))
+  (pretty-print complete-log))
 
 
 

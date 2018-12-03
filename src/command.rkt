@@ -11,7 +11,6 @@
   (define (set-timestamp)
     (define start (hash-ref params "start"))
     (hash-set! state "timestamp" (time-diff (time-now) start)))
-  
   (set-timestamp)
 
   (define (add-to-ready proc)
@@ -29,7 +28,7 @@
   (define (get-ready)
     (hash-ref state "ready-queue"))
 
-  ;; process list accesors
+  ;; a process accesors
   ;;(define (pid process)
   ;;  (car process))
   (define (size process)
@@ -64,7 +63,7 @@
     (define (make-process)
       (define new-pid (hash-ref state "current-pid"))
       (hash-update! state "current-pid" inc)
-        (list new-pid s n))
+      (list new-pid (string->number s) (string->number n)))
     (define new-process (make-process))
     (define proc-in-cpu (get-cpu))
 
@@ -74,7 +73,7 @@
     ;; the process in the cpu has lower or equal priority
     (cond
       [(empty? proc-in-cpu) (add-to-cpu new-process)]
-      [(< (string->number (priority proc-in-cpu)) (string->number (priority new-process)))
+      [(< (priority proc-in-cpu) (priority new-process))
        (add-to-ready proc-in-cpu)
        (add-to-cpu new-process)]
       [else (add-to-ready new-process)])
@@ -105,7 +104,7 @@
     ;; Check if page is in memory and if there's space to load
     (cond [(member pid-page (hash-ref state "memory"))
            (define frame (get-page pid-page (hash-ref state "memory")))
-           (displayln "FRAME A)"]
+           (displayln "FRAME A")]
           [(member empty (hash-ref state "memory"))
            (define frame (get-page empty (hash-ref state "memory")))
            (displayln "FRAME B")]
@@ -175,7 +174,7 @@
   (current-inexact-milliseconds))
 
 (define (time-diff t1 t2)
-  (real->decimal-string (ms->s (- t1 t2))) 3)
+  (real->decimal-string (ms->s (- t1 t2)) 3)
 
 (define (ms->s sec)
   (/ sec 1000))

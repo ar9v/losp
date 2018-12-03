@@ -65,7 +65,39 @@
     (format "s:~a n:~a" s n))
 
   (define (address pid v)
-    (format "pid:~a v:~a" pid v))
+    (cond [(not (= (string->number pid) (car (hash-ref state "cpu"))))
+           (format "<~a> ~a no se está ejecutando" (hash-ref state "timestamp") pid)]
+          [else (alloc-mem pid v)]))
+
+  (define (alloc-mem pid v)
+    (format "ALLOCATING MEM~n")
+    (define virt (string->number v))
+    (define psize (* (hash-ref params "page") 1024))
+    (define msize (* (hash-ref params "memory") 1024))
+    (define num-pages (/ msize psize))
+    (define (calculate-address-pair)
+      (cons (truncate (/ virt psize)) (modulo virt psize)))
+    (define address-pair (calculate-address-pair))
+    (define pid-page (cons pid (car address-pair)))
+
+    (define page-counter 0)
+    (define (get-page pid-page ls)
+      (cond [(eq? pid-page (car ls))
+             page-counter]
+            [else (add1 page-counter) (get-page pid-page (cdr ls))]))
+             
+    ;; Check if page is in memory and if there's space to load
+    (cond [(member pid-page (hash-ref state "memory"))
+           (define frame (get-page pid-page (hash-ref state "memory")))
+           (displayln "FRAME A)"]
+          [(member empty (hash-ref state "memory"))
+           (define frame (get-page empty (hash-ref state "memory")))
+           (displayln "FRAME B")]
+          [else
+           (lru pid-page)]))
+
+  (define (lru pid-page)
+    (displayln "lru aplicado"))
 
   (define (fin procid)
     ;; two cases
@@ -77,15 +109,15 @@
     (format "The End."))
 
   (define (real-mem m)
-    (hash-set! params "memory" m)
+    (hash-set! params "memory" (string->number m))
     (format "real memory:~a" m))
 
   (define (swap-mem m)
-    (hash-set! params "swap" m)
+    (hash-set! params "swap" (string->number m))
     (format "swap memory:~a" m))
 
   (define (page-size p)
-    (hash-set! params "page" p)
+    (hash-set! params "page" (string->number p))
     (format "page size:~a" p))
 
   (define (no-command . sink)

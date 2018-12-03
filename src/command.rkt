@@ -89,32 +89,30 @@
           [else (alloc-mem pid v)]))
 
   (define (alloc-mem pid v)
-    (format "ALLOCATING MEM~n")
     (define virt (string->number v))
-    (define psize (hash-ref params "page-size"))
+    (define psize (hash-ref params "page"))
     (define (calculate-address-pair)
       (cons (truncate (/ virt psize)) (modulo virt psize)))
-    (define address-pair (calculate-address-pair))
-    (define pid-page (cons pid (car address-pair)))
 
-    (define page-counter 0)
-    (define (get-page pid-page ls)
-      (cond [(eq? pid-page (car ls))
-             page-counter]
-            [else (add1 page-counter) (get-page pid-page (cdr ls))]))
-    
-    ;; Check if page is in memory and if there's space to load
-    (cond [(member pid-page (get-memory))
-           (define frame (get-page pid-page (get-memory)))
-           (displayln "FRAME A")]
-          [(member empty (get-memory))
-           (define frame (get-page empty (get-memory)))
-           (displayln "FRAME B")]
-          [else
-           (lru pid-page)]))
+    (displayln "antes del let")
+    (let* ([address-pair (calculate-address-pair)]
+           [pid-page (cons pid (car address-pair))]
+           [memory (get-memory)]
+           [pos-pid-page (vector-member pid-page memory)]
+           [pos-empty-page (vector-member 0 memory)])
+      (displayln "Ricardo dijo que imprimiera")
+      (displayln pos-empty-page)
+      (displayln pos-pid-page)
+      (cond [pos-pid-page
+             (hash-set! state "address" (+ (* pos-pid-page psize) (cdr address-pair)))]
+            [pos-empty-page
+             (hash-set! state "address" (+ (* pos-pid-page psize) (cdr address-pair)))
+             (vector-set! memory pos-empty-page pid-page)]
+            [else
+             (lru pid-page)])))
 
-  (define (lru pid-page)
-    (displayln "lru aplicado"))
+    (define (lru pid-page)
+      (displayln "lru aplicado"))
 
   (define (fin procid)
     (define nprocid (string->number procid))

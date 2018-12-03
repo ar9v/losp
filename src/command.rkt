@@ -26,9 +26,12 @@
   (define (get-cpu)
     (hash-ref state "cpu"))
 
+  (define (get-ready)
+    (hash-ref state "ready-queue"))
+
   ;; process list accesors
-  (define (pid process)
-    (car process))
+  ;;(define (pid process)
+  ;;  (car process))
   (define (size process)
     (cadr process))
   (define (priority process)
@@ -68,9 +71,29 @@
     (format "pid:~a v:~a" pid v))
 
   (define (fin procid)
+    (define nprocid (string->number procid))
+    (define proc-in-cpu (get-cpu))
+    
+    (define (process=pid processid process)
+        (= (car process) processid))
+
+    ;; removes from ready-queue, and returns it
+    (define (remove-from-ready proc)
+        (define found 
+                (findf (lambda (p) (process=pid proc p)) (get-ready)))
+        (hash-update! state
+                      "ready-queue"
+                      (lambda (old)
+                       (remove proc old process=pid)))
+        found)
     ;; two cases
     ;; the process to end is in the cpu,
     ;; the process to end is in the ready queue
+    (cond
+      [(= (car proc-in-cpu) nprocid)
+        (add-to-finished proc-in-cpu)
+        (add-to-cpu (next-proc))]
+      [else (add-to-finished (remove-from-ready nprocid))])
     (format "pid:~a" procid))
 
   (define (end)
@@ -95,7 +118,7 @@
     (case name
       [("CreateP") create]
       [("Address") address]
-      [("Fin")  fin]
+      [("Fin") fin]
       [("End") end]
       [("RealMemory") real-mem]
       [("SwapMemory") swap-mem]

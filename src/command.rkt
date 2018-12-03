@@ -40,21 +40,34 @@
   (define (process<=? x y)
     (< (priority x) (priority y)))
 
+  (define (process=pid processid process)
+      (= (car process) processid))
+
+  ;; removes from ready-queue, and returns it
   (define (remove-from-ready proc)
-    (hash-set! state "ready-queue" proc))
+      (define found 
+              (findf (lambda (p) (process=pid proc p)) (get-ready)))
+      (hash-update! state
+                    "ready-queue"
+                    (lambda (old)
+                     (remove proc old process=pid)))
+      found)
 
   (define (next-proc)
     ;; head for now, it needs to be the highest priority
-    (car (hash-ref state "ready-queue")))
+    (define ready (get-ready))
+    (cond 
+        [(empty? ready) empty]
+        [else (remove-from-ready (caar ready)) (car ready)]))
 
   (define (create s n)
-    (define new-pid (hash-ref state "current-pid"))
-    (hash-update! state "current-pid" inc)
     (define (make-process)
-      (list new-pid s n))
+      (define new-pid (hash-ref state "current-pid"))
+      (hash-update! state "current-pid" inc)
+        (list new-pid s n))
     (define new-process (make-process))
     (define proc-in-cpu (get-cpu))
-    
+
     ;; three cases,
     ;; there is no process in cpu
     ;; the process in the cpu has greater priority
@@ -106,18 +119,6 @@
     (define nprocid (string->number procid))
     (define proc-in-cpu (get-cpu))
     
-    (define (process=pid processid process)
-        (= (car process) processid))
-
-    ;; removes from ready-queue, and returns it
-    (define (remove-from-ready proc)
-        (define found 
-                (findf (lambda (p) (process=pid proc p)) (get-ready)))
-        (hash-update! state
-                      "ready-queue"
-                      (lambda (old)
-                       (remove proc old process=pid)))
-        found)
     ;; two cases
     ;; the process to end is in the cpu,
     ;; the process to end is in the ready queue

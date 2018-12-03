@@ -83,7 +83,10 @@
        (add-to-ready proc-in-cpu)
        (add-to-cpu new-process) (address (number->string (car new-process)) "0")]
       [else (add-to-ready new-process)])
-    (format "s:~a n:~a" s n))
+    (format "<~a> Process ~a created. Size: ~a, Priority: ~a" (hash-ref state "timestamp")
+            (car new-process)
+            (quotient (string->number s) (hash-ref params "page"))
+            n))
 
   (define (address pid v)
     (define proc-in-cpu (get-cpu))
@@ -96,6 +99,7 @@
     (define psize (hash-ref params "page"))
     (define (calculate-address-pair)
       (cons (quotient virt psize) (modulo virt psize)))
+    (define proc-size (quotient (hash-ref params "memory") psize))
 
     (let* ([address-pair (calculate-address-pair)]
            [pid-page (cons pid (car address-pair))]
@@ -103,17 +107,21 @@
            [arrivs (get-arrivs)]
            [pos-pid-page (vector-member pid-page memory)]
            [pos-empty-page (vector-member 0 memory)])
-      (cond [pos-pid-page
+      (cond [(> (car address-pair) proc-size)
+             (format "<~a> Address outside of process!" (hash-ref state "timestamp"))]
+            [pos-pid-page
              (hash-set! state "address" (+ (* pos-pid-page psize) (cdr address-pair)))
-             (vector-set! arrivs pos-pid-page (string->number (hash-ref state "timestamp")))]
+             (vector-set! arrivs pos-pid-page (string->number (hash-ref state "timestamp")))
+             (format "Real Address: ~a" (+ (* pos-pid-page psize) (cdr address-pair)))]
             [pos-empty-page
              (hash-set! state "address" (+ (* pos-empty-page psize) (cdr address-pair)))
              (vector-set! memory pos-empty-page pid-page)
-             (vector-set! arrivs pos-empty-page (string->number (hash-ref state "timestamp")))]
+             (vector-set! arrivs pos-empty-page (string->number (hash-ref state "timestamp")))
+             (format "Real Address: ~a" (+ (* pos-empty-page psize) (cdr address-pair)))]
             [else
-             (lru pid-page)])))
+             (lru pid-page psize address-pair)])))
 
-  (define (lru pid-page)
+  (define (lru pid-page psize address-pair)
     (define oldest (apply min (vector->list (get-arrivs))))
     (define old-pos (vector-member oldest (get-arrivs)))
     (define old-pair (vector-ref (get-memory) old-pos))
@@ -121,7 +129,9 @@
     (vector-set! (hash-ref state "swap") pos-swap old-pair)
     (vector-set! (get-memory) old-pos pid-page)
     (vector-set! (get-arrivs) old-pos (string->number (hash-ref state "timestamp")))
-    (displayln "lru aplicado"))
+    (hash-set! state "address" (+ (* old-pos psize) (cdr address-pair)))
+    (displayln "lru aplicado")
+    (format "Real Address: ~a" (+ (* old-pos psize) (cdr address-pair))))
 
   (define (fin procid)
     (define nprocid (string->number procid))
@@ -136,7 +146,7 @@
         (add-to-finished proc-in-cpu)
         (add-to-cpu (next-proc))]
       [else (add-to-finished (remove-from-ready nprocid))])
-    (format "pid:~a" procid))
+    (format "<~a> Process ~a finished" (hash-ref state "timestamp") procid))
 
   (define (end)
     (format "The End."))

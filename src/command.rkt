@@ -64,7 +64,7 @@
   (displayln proc-in-cpu)
   (cond
     [(empty? proc-in-cpu) (add-to-cpu new-process)]
-    [(> (priority proc-in-cpu) (priority new-process))
+    [(< (string->number (priority proc-in-cpu)) (string->number (priority new-process)))
      (add-to-ready proc-in-cpu)
      (add-to-cpu new-process)]
     [else (add-to-ready new-process)])

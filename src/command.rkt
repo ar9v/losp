@@ -18,7 +18,7 @@
   
   (define (add-to-cpu proc)
     (hash-set! state "cpu" proc))
-  
+   
   (define (add-to-finished proc)
     (hash-update! state "finished-queue" (lambda (old) (cons proc old))))
  
@@ -30,6 +30,9 @@
 
   (define (get-memory)
     (hash-ref state "memory"))
+
+  (define (get-swap)
+    (hash-ref state "swap"))
 
   (define (get-arrivs)
     (hash-ref state "arrivals"))
@@ -67,8 +70,8 @@
 
   (define (create s n)
     (define (make-process)
-      (define new-pid (hash-ref state "current-pid"))
       (hash-update! state "current-pid" inc)
+      (define new-pid (hash-ref state "current-pid"))
       (list new-pid (string->number s) (string->number n)))
     (define new-process (make-process))
     (define proc-in-cpu (get-cpu))
@@ -136,7 +139,18 @@
   (define (fin procid)
     (define nprocid (string->number procid))
     (define proc-in-cpu (get-cpu))
-    
+
+    (for ([i (get-memory)])
+      (cond [(eq? 0 i)
+             empty]
+            [(equal? (car i) procid)
+             (vector-set! (get-memory) (vector-member i (get-memory)) 0)]))
+    (for ([i (get-swap)])
+      (cond [(eq? 0 i)
+             empty]
+            [(equal? (car i) procid)
+             (vector-set! (get-swap) (vector-member i (get-swap)) 0)]))
+
     ;; two cases
     ;; the process to end is in the cpu,
     ;; the process to end is in the ready queue
@@ -144,7 +158,10 @@
       [(empty? proc-in-cpu) (add-to-finished (remove-from-ready nprocid))]
       [(= (car proc-in-cpu) nprocid)
         (add-to-finished proc-in-cpu)
-        (add-to-cpu (next-proc))]
+        (add-to-cpu (next-proc))
+        (if (not (empty? (get-cpu)))
+            (address (number->string (car (get-cpu))) "0")
+            #f)]
       [else (add-to-finished (remove-from-ready nprocid))])
     (format "<~a> Process ~a finished" (hash-ref state "timestamp") procid))
 

@@ -47,7 +47,7 @@
                              ("memory" . ,empty)
                              ("swap" . ,empty)
                              ("finished-queue" . ,empty)
-                             ("current-pid" . 1))))
+                             ("current-pid" . 0))))
   (define params (make-hash `(("start" . ,(current-inexact-milliseconds)))))
   
   ;; Consume the first messages of the protocol
@@ -79,7 +79,5 @@
   complete-log
   ;;(pretty-print complete-log)
   )
-
-
 
 (define stop (serve 10000))

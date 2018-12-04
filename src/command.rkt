@@ -37,6 +37,9 @@
   (define (get-arrivs)
     (hash-ref state "arrivals"))
 
+  (define (get-timestamp)
+    (hash-ref state "timestamp"))
+
   ;; a process accesors
   ;;(define (pid process)
   ;;  (car process))
@@ -61,13 +64,18 @@
                      (remove proc old process=pid)))
       found)
 
+  ;; determines the next process to be loaded based on priority
   (define (next-proc)
-    ;; head for now, it needs to be the highest priority
     (define ready (get-ready))
     (cond 
         [(empty? ready) empty]
-        [else (remove-from-ready (caar ready)) (car ready)]))
-
+        [else
+         (define next (foldl (lambda (a b)
+                               (if (> (priority a) (priority b)) a b))
+                             '(0 0 -99999)
+                             (get-ready)))
+         (remove-from-ready (car next)) next]))
+  
   (define (create s n)
     (define (make-process)
       (hash-update! state "current-pid" inc)
@@ -81,12 +89,14 @@
     ;; the process in the cpu has greater priority
     ;; the process in the cpu has lower or equal priority
     (cond
-      [(empty? proc-in-cpu) (add-to-cpu new-process) (address (number->string (car new-process)) "0")]
+      [(empty? proc-in-cpu)
+       (add-to-cpu new-process)
+       (address (number->string (car new-process)) "0")]
       [(< (priority proc-in-cpu) (priority new-process))
        (add-to-ready proc-in-cpu)
        (add-to-cpu new-process) (address (number->string (car new-process)) "0")]
       [else (add-to-ready new-process)])
-    (format "<~a> Process ~a created. Size: ~a, Priority: ~a" (hash-ref state "timestamp")
+    (format "<~a> Process ~a created. Size: ~a, Priority: ~a" (get-timestamp)
             (car new-process)
             (quotient (string->number s) (hash-ref params "page"))
             n))
@@ -94,7 +104,7 @@
   (define (address pid v)
     (define proc-in-cpu (get-cpu))
     (cond [(or (empty? proc-in-cpu) (not (= (string->number pid) (car proc-in-cpu))))
-           (format "<~a> ~a no se está ejecutando" (hash-ref state "timestamp") pid)]
+           (format "<~a> ~a no se está ejecutando" (get-timestamp) pid)]
           [else (alloc-mem pid v)]))
 
   (define (alloc-mem pid v)
@@ -111,15 +121,15 @@
            [pos-pid-page (vector-member pid-page memory)]
            [pos-empty-page (vector-member 0 memory)])
       (cond [(> (car address-pair) proc-size)
-             (format "<~a> Address outside of process!" (hash-ref state "timestamp"))]
+             (format "<~a> Address outside of process!" (get-timestamp))]
             [pos-pid-page
              (hash-set! state "address" (+ (* pos-pid-page psize) (cdr address-pair)))
-             (vector-set! arrivs pos-pid-page (string->number (hash-ref state "timestamp")))
+             (vector-set! arrivs pos-pid-page (string->number (get-timestamp)))
              (format "Real Address: ~a" (+ (* pos-pid-page psize) (cdr address-pair)))]
             [pos-empty-page
              (hash-set! state "address" (+ (* pos-empty-page psize) (cdr address-pair)))
              (vector-set! memory pos-empty-page pid-page)
-             (vector-set! arrivs pos-empty-page (string->number (hash-ref state "timestamp")))
+             (vector-set! arrivs pos-empty-page (string->number (get-timestamp)))
              (format "Real Address: ~a" (+ (* pos-empty-page psize) (cdr address-pair)))]
             [else
              (lru pid-page psize address-pair)])))
@@ -128,10 +138,10 @@
     (define oldest (apply min (vector->list (get-arrivs))))
     (define old-pos (vector-member oldest (get-arrivs)))
     (define old-pair (vector-ref (get-memory) old-pos))
-    (define pos-swap (vector-member 0 (hash-ref state "swap")))
-    (vector-set! (hash-ref state "swap") pos-swap old-pair)
+    (define pos-swap (vector-member 0 (get-swap)))
+    (vector-set! (get-swap) pos-swap old-pair)
     (vector-set! (get-memory) old-pos pid-page)
-    (vector-set! (get-arrivs) old-pos (string->number (hash-ref state "timestamp")))
+    (vector-set! (get-arrivs) old-pos (string->number (get-timestamp)))
     (hash-set! state "address" (+ (* old-pos psize) (cdr address-pair)))
     (displayln "lru aplicado")
     (format "Real Address: ~a" (+ (* old-pos psize) (cdr address-pair))))
@@ -163,7 +173,7 @@
             (address (number->string (car (get-cpu))) "0")
             #f)]
       [else (add-to-finished (remove-from-ready nprocid))])
-    (format "<~a> Process ~a finished" (hash-ref state "timestamp") procid))
+    (format "<~a> Process ~a finished" (get-timestamp) procid))
 
   (define (end)
     (format "The End."))

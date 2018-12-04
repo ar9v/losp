@@ -80,4 +80,5 @@
   ;;(pretty-print complete-log)
   )
 
+;; Serve from port 10000 and return a function to stop the connection
 (define stop (serve 10000))
